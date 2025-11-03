@@ -30,11 +30,20 @@ export const api = {
     })
   },
 
-  // Historical Data
-  async getHistory(devEui, measurement, start = '-1h', stop = 'now()') {
-    const response = await fetch(
-      `${API_BASE_URL}/api/history/${devEui}?measurement=${measurement}&start=${start}&stop=${stop}`
-    )
+  // Get device latest data (获取设备最新数据)
+  async getDeviceLatestData(devEui) {
+    const response = await fetch(`${API_BASE_URL}/api/devices/${devEui}/latest`)
+    return response.json()
+  },
+
+  // Get device history (获取设备历史数据)
+  async getDeviceHistory(devEui, field, start, stop) {
+    const params = new URLSearchParams({
+      field,
+      start,
+      stop
+    })
+    const response = await fetch(`${API_BASE_URL}/api/devices/${devEui}/history?${params}`)
     return response.json()
   }
 }

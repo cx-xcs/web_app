@@ -2,10 +2,8 @@ from pydantic import BaseModel, Field
 
 
 class Device(BaseModel):
-    dev_eui: str = Field(..., description="Device EUI", pattern=r"^[a-fA-F0-9]{16}$")
-    device_name: str = Field(..., description="Device Name")
-    application_name: str = Field(..., description="Application Name")
-    # Using struct format string to decode data. e.g., ">ff" for 2 big-endian floats
-    data_format: str = Field(..., description="Payload format string for struct.unpack")
-    # e.g., ["temperature", "humidity"]
-    data_fields: list[str] = Field(..., description="List of field names for decoded data")
+    dev_eui: str = Field(..., pattern=r"^[a-fA-F0-9]{16}$")
+    device_name: str
+    application_name: str
+    data_format: str  # struct 格式串，如 ">ff"
+    data_fields: list[str]  # 字段名数组，如 ["temperature", "humidity"]

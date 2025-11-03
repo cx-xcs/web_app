@@ -1,8 +1,14 @@
+import asyncio
+import sys
+
+# Windows平台必须在导入其他模块前设置事件循环策略
+# 使用SelectorEventLoop以支持aiomqtt的add_reader/add_writer
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import asyncio
-import json
 import logging
 from typing import List
 
@@ -64,10 +70,10 @@ class ConnectionManager:
         self.active_connections.remove(websocket)
 
     async def broadcast(self, message: str):
-        for connection in self.active_connections:
+        for c in list(self.active_connections):
             try:
-                await connection.send_text(message)
-            except:
+                await c.send_text(message)
+            except Exception:
                 pass
 
 manager = ConnectionManager()
@@ -76,12 +82,6 @@ manager = ConnectionManager()
 async def root():
     """Test endpoint to verify the API is running"""
     return {"status": "ok", "message": "LoRaWAN Web App Backend is running"}
-
-# --- Device Management API ---
-
-@app.post("/api/devices", response_model=Device)
-def create_device(device: Device):
-    return device_manager.save_device(device)
 
 @app.get("/api/devices", response_model=List[Device])
 def get_all_devices():
@@ -95,33 +95,57 @@ def get_device_by_eui(dev_eui: str):
         raise HTTPException(status_code=404, detail="Device not found")
     return device
 
+@app.post("/api/devices", response_model=Device)
+def create_device(device: Device):
+    return device_manager.save_device(device)
+
 @app.delete("/api/devices/{dev_eui}", status_code=204)
 def delete_device_by_eui(dev_eui: str):
     if not device_manager.delete_device(dev_eui):
         raise HTTPException(status_code=404, detail="Device not found")
-    return
 
-# --- Historical Data API ---
-
-@app.get("/api/history/{dev_eui}")
-def get_history(dev_eui: str, measurement: str, start: str = "-1h", stop: str = "now()"):
+@app.get("/api/devices/{dev_eui}/latest")
+def get_latest_data(dev_eui: str):
     """
-    Get historical data for a device.
-    - dev_eui: The device EUI.
-    - measurement: The data field to query (e.g., 'temperature').
-    - start: Start time (e.g., '-1h', '-7d', '2023-01-01T00:00:00Z').
-    - stop: Stop time (defaults to now).
+    获取设备最后一次上传的数据及时间
     """
     device = device_manager.get_device(dev_eui)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-    if measurement not in device.data_fields:
-        raise HTTPException(status_code=400, detail=f"Invalid measurement for this device. Valid options: {device.data_fields}")
-        
-    data = influx_client.query_data(dev_eui, start, stop, measurement)
-    return data
+    
+    data = influx_client.query_latest_data(dev_eui)
+    if not data:
+        return {"dev_eui": dev_eui, "device_name": device.device_name, "data": None, "timestamp": None}
+    
+    return {
+        "dev_eui": dev_eui,
+        "device_name": device.device_name,
+        **data
+    }
 
-# --- Real-time Data WebSocket ---
+@app.get("/api/devices/{dev_eui}/history")
+def get_device_history(dev_eui: str, field: str, start: str = "-3d", stop: str = "now()"):
+    """
+    获取设备指定字段的历史数据
+    - dev_eui: 设备 EUI
+    - field: 数据字段 (如 'temperature', 'humidity')
+    - start: 开始时间 (默认3天前)
+    - stop: 结束时间 (默认现在)
+    """
+    device = device_manager.get_device(dev_eui)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    if field not in device.data_fields:
+        raise HTTPException(status_code=400, detail=f"Invalid field. Valid: {device.data_fields}")
+    
+    data = influx_client.query_data(dev_eui, start, stop, field)
+    return {
+        "dev_eui": dev_eui,
+        "device_name": device.device_name,
+        "field": field,
+        "data": data
+    }
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

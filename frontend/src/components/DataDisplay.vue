@@ -30,7 +30,7 @@
 
 <script>
 import { defineComponent, ref, onMounted, onUnmounted } from 'vue'
-import { getLatestData, getHistoricalData } from '../api'
+import { api } from '../api'
 import { useMessage } from 'naive-ui'
 import * as echarts from 'echarts'
 
@@ -46,7 +46,7 @@ export default defineComponent({
         // 获取最新数据
         const fetchLatestData = async () => {
             try {
-                const data = await getLatestData()
+                const data = await api.getLatestData()
                 latestData.value = data
             } catch (error) {
                 message.error('获取最新数据失败')
@@ -63,7 +63,7 @@ export default defineComponent({
         // 更新历史数据图表
         const updateHistoricalChart = async () => {
             try {
-                const data = await getHistoricalData()
+                const data = await api.getHistoricalData()
                 if (chart) {
                     // 假设数据格式为 [{ timestamp: string, value: number }]
                     const option = {
@@ -125,3 +125,12 @@ export default defineComponent({
         }
     }
 })
+</script>
+
+<style scoped>
+.echarts {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+}
+</style>

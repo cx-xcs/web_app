@@ -1,12 +1,24 @@
 {
-    "cacbb80100002362": {
-        "dev_eui": "cacbb80100002362",
-        "device_name": "node1",
-        "application_name": "temp_hum",
-        "data_format": ">ff",
-        "data_fields": [
-            "temperature",
-            "humidity"
-        ]
-    }
+  "cacbb80100002362": {
+    "dev_eui": "cacbb80100002362",
+    "device_name": "room11",
+    "application_name": "temp_hum",
+    "data_format": ">ff",
+    "data_fields": [
+      "temperature",
+      "humidity"
+    ]
+  },
+  "cacbb80100002364": {
+    "dev_eui": "cacbb80100002364",
+    "device_name": "room2",
+    "application_name": "temp_hum",
+    "data_format": ">ffff",
+    "data_fields": [
+      "temperature",
+      "humidity",
+      "val",
+      "watterline"
+    ]
+  }
 }
