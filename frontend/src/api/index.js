@@ -24,6 +24,21 @@ export const api = {
     return response.json()
   },
 
+  async updateDevice(devEui, device) {
+    const response = await fetch(`${API_BASE_URL}/api/devices/${devEui}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(device)
+    })
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`更新失败: ${error}`)
+    }
+    return response.json()
+  },
+
   async deleteDevice(devEui) {
     await fetch(`${API_BASE_URL}/api/devices/${devEui}`, {
       method: 'DELETE'

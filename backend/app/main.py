@@ -99,6 +99,15 @@ def get_device_by_eui(dev_eui: str):
 def create_device(device: Device):
     return device_manager.save_device(device)
 
+@app.put("/api/devices/{dev_eui}", response_model=Device)
+def update_device(dev_eui: str, device: Device):
+    if dev_eui != device.dev_eui:
+        raise HTTPException(status_code=400, detail="dev_eui mismatch")
+    existing = device_manager.get_device(dev_eui)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Device not found")
+    return device_manager.save_device(device)
+
 @app.delete("/api/devices/{dev_eui}", status_code=204)
 def delete_device_by_eui(dev_eui: str):
     if not device_manager.delete_device(dev_eui):

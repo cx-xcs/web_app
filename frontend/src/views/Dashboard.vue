@@ -13,12 +13,12 @@
         />
       </n-card>
 
-      <!-- 新增设备弹窗（修复：使用 NModal + NCard，并在 #footer 放置操作按钮） -->
+      <!-- 新增/编辑设备弹窗 -->
       <n-modal v-model:show="showAdd" :auto-focus="false">
-        <n-card title="新增设备" size="small" style="max-width: 560px;">
+        <n-card :title="isEditing ? '编辑设备' : '新增设备'" size="small" style="max-width: 560px;">
           <n-form :model="addForm" label-width="100">
             <n-form-item label="DevEUI">
-              <n-input v-model:value="addForm.dev_eui" placeholder="16位十六进制，如 cacbb80100002362" />
+              <n-input v-model:value="addForm.dev_eui" placeholder="16位十六进制，如 cacbb80100002362" :disabled="isEditing" />
             </n-form-item>
             <n-form-item label="设备名称">
               <n-input v-model:value="addForm.device_name" placeholder="如 room1" />
@@ -108,9 +108,11 @@ const devicesData = ref({})
 const selectedDevice = ref(null)
 const selectedField = ref(null)
 
-// 新增设备弹窗
+// 新增/编辑设备弹窗
 const showAdd = ref(false)
 const adding = ref(false)
+const isEditing = ref(false)
+const editingDevEui = ref('')
 const addForm = ref({
   dev_eui: '',
   device_name: '',
@@ -195,17 +197,27 @@ const deviceColumns = [
   {
     title: '操作',
     key: 'actions',
-    width: 100,
+    width: 180,
     render: (row) => {
-      return h(
-        NButton,
-        {
-          size: 'small',
-          type: 'primary',
-          onClick: () => selectDevice(row)
-        },
-        { default: () => '查看历史' }
-      )
+      return h('div', { style: 'display: flex; gap: 8px;' }, [
+        h(
+          NButton,
+          {
+            size: 'small',
+            type: 'primary',
+            onClick: () => selectDevice(row)
+          },
+          { default: () => '查看历史' }
+        ),
+        h(
+          NButton,
+          {
+            size: 'small',
+            onClick: () => openEditModal(row)
+          },
+          { default: () => '编辑' }
+        )
+      ])
     }
   }
 ]
@@ -225,8 +237,30 @@ const fieldOptions = computed(() => {
   }))
 })
 
-const openAddModal = () => { 
+const openAddModal = () => {
+  isEditing.value = false
+  editingDevEui.value = ''
+  addForm.value = {
+    dev_eui: '',
+    device_name: '',
+    application_name: 'temp_hum',
+    data_format: '>ff',
+    data_fields_csv: 'temperature,humidity'
+  }
   showAdd.value = true 
+}
+
+const openEditModal = (device) => {
+  isEditing.value = true
+  editingDevEui.value = device.dev_eui
+  addForm.value = {
+    dev_eui: device.dev_eui,
+    device_name: device.device_name,
+    application_name: device.application_name,
+    data_format: device.data_format,
+    data_fields_csv: device.data_fields.join(',')
+  }
+  showAdd.value = true
 }
 
 const submitAdd = async () => {
@@ -257,8 +291,17 @@ const submitAdd = async () => {
   }
   try {
     adding.value = true
-    await api.createDevice(payload)
-    message.success('设备已保存')
+    if (isEditing.value) {
+      // 更新设备
+      console.log('更新设备:', editingDevEui.value, payload)
+      await api.updateDevice(editingDevEui.value, payload)
+      message.success('设备已更新')
+    } else {
+      // 创建设备
+      console.log('创建设备:', payload)
+      await api.createDevice(payload)
+      message.success('设备已创建')
+    }
     showAdd.value = false
     // 重置表单
     addForm.value = {
@@ -270,7 +313,7 @@ const submitAdd = async () => {
     }
     await loadDevices()
   } catch (e) {
-    console.error(e)
+    console.error('保存失败详情:', e)
     message.error('保存设备失败：' + (e.message || '未知错误'))
   } finally {
     adding.value = false
